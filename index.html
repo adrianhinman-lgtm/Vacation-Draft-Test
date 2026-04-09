@@ -920,8 +920,13 @@ async function confirmPick() {
     sendEmail(p,slot,nextPersonObj,'pick');
     closeModal();
     renderAll();
-    if(isDraftDone()){showToast('Draft complete! All slots filled. 🎉','success','🏖');}
-    else{const np=state.participants[participantAtIndex(state.currentPickIndex)];showToast(`${p.name.split(' ')[0]} picked ${slot.label}! ${np.name.split(' ')[0]} is up.`,'success','✓');}
+    if(isDraftDone()){
+      showToast('Draft complete! Sending final report to all participants… 🎉','success','🏖');
+      setTimeout(() => sendCompletionEmails(), 1000); // slight delay so Firebase save finishes first
+    } else {
+      const np=state.participants[participantAtIndex(state.currentPickIndex)];
+      showToast(`${p.name.split(' ')[0]} picked ${slot.label}! ${np.name.split(' ')[0]} is up.`,'success','✓');
+    }
   } catch(err) {
     console.error('confirmPick error:',err);
     showToast(`Error: ${err.message}`,'info','⚠️');
@@ -1049,7 +1054,92 @@ function sendReminderEmail(person) {
     .then(() => { console.log(`✅ Admin reminder sent to ${ADMIN_EMAIL}`); })
     .catch(err => { console.error('Admin reminder error:', err); });
 }
-let toastTimer;
+// ── COMPLETION REPORT EMAIL ──
+function buildFinalSchedule() {
+  // Full schedule grouped by slot, sorted chronologically
+  return state.slots.map(slot => {
+    const claimants = slot.claims.map(pIdx => state.participants[pIdx].name);
+    const names = claimants.length > 0 ? claimants.join(', ') : 'No one selected';
+    return `📅 ${slot.label}\n   ${fmt(slot.start)} – ${fmt(slot.end)} (${slot.days} days)\n   ${names}`;
+  }).join('\n\n');
+}
+
+function buildPersonalSummary(pIdx) {
+  // What did this specific person pick?
+  const picks = state.claims
+    .filter(c => c.personIdx === pIdx)
+    .map(c => {
+      const slot = state.slots.find(s => s.id === c.slotId);
+      return slot ? `• ${slot.label} (${fmt(slot.start)} – ${fmt(slot.end)})` : '';
+    })
+    .filter(Boolean)
+    .join('\n');
+  return picks || 'No selections made.';
+}
+
+function sendCompletionEmails() {
+  if (typeof emailjs === 'undefined') return;
+
+  const finalSchedule = buildFinalSchedule();
+  const recipients = [...state.participants];
+
+  // Send to each participant with a slight delay between sends to avoid rate limits
+  recipients.forEach((person, i) => {
+    setTimeout(() => {
+      const personalSummary = buildPersonalSummary(i);
+      const templateParams = {
+        to_name:            person.name,
+        to_first_name:      person.name.split(' ')[0],
+        to_email:           person.email,
+        from_name:          'Vacation Draft',
+        actor_name:         'Vacation Draft',
+        action_summary:     `The vacation draft is complete! Here is the final schedule and your personal selections.`,
+        slot_label:         'Your picks:\n' + personalSummary,
+        slot_dates:         '—',
+        slot_days:          '—',
+        spots_left:         '—',
+        closed_slots:       finalSchedule,
+        open_slots_summary: `Total picks made: ${state.totalPicks}`,
+        round_num:          roundNumber(state.currentPickIndex),
+        pick_num:           state.totalPicks,
+        context:            'complete',
+        draft_link:         BASE_URL,
+        reply_to:           ADMIN_EMAIL,
+      };
+      emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, templateParams)
+        .then(() => console.log(`✅ Completion report sent to ${person.name}`))
+        .catch(err => console.error(`Completion email error (${person.name}):`, err));
+    }, i * 500); // 500ms between each send
+  });
+
+  // Send a separate admin summary with the full schedule
+  setTimeout(() => {
+    const adminParams = {
+      to_name:            ADMIN_NAME,
+      to_first_name:      ADMIN_NAME,
+      to_email:           ADMIN_EMAIL,
+      from_name:          'Vacation Draft',
+      actor_name:         'Vacation Draft',
+      action_summary:     `The vacation draft is complete! All ${state.totalPicks} picks have been made across ${state.slots.length} date slots. The full schedule is below.`,
+      slot_label:         '—',
+      slot_dates:         '—',
+      slot_days:          '—',
+      spots_left:         '—',
+      closed_slots:       finalSchedule,
+      open_slots_summary: `Total participants: ${state.participants.length} · Total picks: ${state.totalPicks}`,
+      round_num:          roundNumber(state.currentPickIndex),
+      pick_num:           state.totalPicks,
+      context:            'complete-admin',
+      draft_link:         BASE_URL,
+      reply_to:           ADMIN_EMAIL,
+    };
+    emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, adminParams)
+      .then(() => console.log(`✅ Admin completion summary sent`))
+      .catch(err => console.error('Admin completion email error:', err));
+  }, (recipients.length + 1) * 500);
+}
+
+
 function showToast(msg,type='success',icon='✓') {
   clearTimeout(toastTimer);
   const t=document.getElementById('toast');
