@@ -535,7 +535,15 @@ function participantAtIndex(idx) {
 }
 function roundNumber(idx) { return Math.floor(idx / 11) + 1; }
 
-function isDraftDone() { return state.slots.length > 0 && state.slots.every(s => s.claims.length >= s.max); }
+function isDraftDone() {
+  if (!state.slots.length) return false;
+  // Done if all slots are physically full
+  if (state.slots.every(s => s.claims.length >= s.max)) return true;
+  // Also done if no participant can make any valid pick (e.g. all remaining spots
+  // are blocked by exclusivity rules for everyone still in the draft)
+  const anyoneCanPick = state.participants.some((_, pIdx) => canPick(pIdx));
+  return !anyoneCanPick;
+}
 function canPick(pIdx) {
   return state.slots.some(s =>
     s.claims.length < s.max &&
