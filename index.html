@@ -1118,17 +1118,28 @@ async function confirmPick() {
     state.totalPicks++;
     slot.claims.push(pIdx);
     state.claims.push({slotId:slot.id,personIdx:pIdx,pickNumber:state.totalPicks,round});
-    const nextPersonObj=!isDraftDone()?state.participants[participantAtIndex(state.currentPickIndex+1)]:null;
+
+    // Advance BEFORE checking done — so isDraftDone reflects the new state
     state.currentPickIndex++;
     advanceToValidPicker();
     issueNewToken();
     await saveToFirebase();
-    sendEmail(p,slot,nextPersonObj,'pick');
+
+    const draftNowDone = isDraftDone();
+
+    // Only send "next person" email if draft isn't over
+    if (!draftNowDone) {
+      const nextPersonObj = state.participants[participantAtIndex(state.currentPickIndex)];
+      sendEmail(p, slot, nextPersonObj, 'pick');
+    }
+
     closeModal();
     renderAll();
-    if(isDraftDone()){
+
+    if (draftNowDone) {
       showToast('Draft complete! Sending final report to all participants… 🎉','success','🏖');
-      setTimeout(() => sendCompletionEmails(), 1000); // slight delay so Firebase save finishes first
+      console.log('🏖 Draft done — firing completion emails');
+      setTimeout(() => sendCompletionEmails(), 1500);
     } else {
       const np=state.participants[participantAtIndex(state.currentPickIndex)];
       showToast(`${p.name.split(' ')[0]} picked ${slot.label}! ${np.name.split(' ')[0]} is up.`,'success','✓');
@@ -1284,12 +1295,17 @@ function buildPersonalSummary(pIdx) {
 }
 
 function sendCompletionEmails() {
-  if (typeof emailjs === 'undefined') return;
+  console.log('📧 sendCompletionEmails fired. EmailJS available:', typeof emailjs !== 'undefined');
+  if (typeof emailjs === 'undefined') {
+    showToast('⚠️ EmailJS not loaded — completion emails not sent', 'info', '⚠️');
+    return;
+  }
 
   const finalSchedule = buildFinalSchedule();
   const recipients = [...state.participants];
+  console.log(`📧 Sending completion emails to ${recipients.length} participants + admin`);
 
-  // Send to each participant with a slight delay between sends to avoid rate limits
+  // Send to each participant with a staggered delay to avoid rate limits
   recipients.forEach((person, i) => {
     setTimeout(() => {
       const personalSummary = buildPersonalSummary(i);
@@ -1299,8 +1315,8 @@ function sendCompletionEmails() {
         to_email:           person.email,
         from_name:          'Vacation Draft',
         actor_name:         'Vacation Draft',
-        action_summary:     `The vacation draft is complete! Here is the final schedule and your personal selections.`,
-        slot_label:         'Your picks:\n' + personalSummary,
+        action_summary:     `The vacation draft is complete! Here is the full schedule and your personal selections.`,
+        slot_label:         'YOUR SELECTIONS:\n' + personalSummary,
         slot_dates:         '—',
         slot_days:          '—',
         spots_left:         '—',
@@ -1312,13 +1328,20 @@ function sendCompletionEmails() {
         draft_link:         BASE_URL,
         reply_to:           ADMIN_EMAIL,
       };
+      console.log(`📧 Sending to ${person.name} (${person.email})...`);
       emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, templateParams)
-        .then(() => console.log(`✅ Completion report sent to ${person.name}`))
-        .catch(err => console.error(`Completion email error (${person.name}):`, err));
-    }, i * 500); // 500ms between each send
+        .then(() => {
+          console.log(`✅ Completion report sent to ${person.name}`);
+          if (i === 0) showToast(`📧 Sending final reports…`, 'success', '📧');
+        })
+        .catch(err => {
+          console.error(`❌ Completion email error (${person.name}):`, err);
+          showToast(`⚠️ Report email failed for ${person.name.split(' ')[0]}: ${err.text||err}`, 'info', '⚠️');
+        });
+    }, i * 600); // 600ms between each to stay under rate limits
   });
 
-  // Send a separate admin summary with the full schedule
+  // Admin summary last
   setTimeout(() => {
     const adminParams = {
       to_name:            ADMIN_NAME,
@@ -1326,7 +1349,7 @@ function sendCompletionEmails() {
       to_email:           ADMIN_EMAIL,
       from_name:          'Vacation Draft',
       actor_name:         'Vacation Draft',
-      action_summary:     `The vacation draft is complete! All ${state.totalPicks} picks have been made across ${state.slots.length} date slots. The full schedule is below.`,
+      action_summary:     `The vacation draft is complete! All ${state.totalPicks} picks have been made. The full schedule is below.`,
       slot_label:         '—',
       slot_dates:         '—',
       slot_days:          '—',
@@ -1339,10 +1362,17 @@ function sendCompletionEmails() {
       draft_link:         BASE_URL,
       reply_to:           ADMIN_EMAIL,
     };
+    console.log(`📧 Sending admin summary to ${ADMIN_EMAIL}...`);
     emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, adminParams)
-      .then(() => console.log(`✅ Admin completion summary sent`))
-      .catch(err => console.error('Admin completion email error:', err));
-  }, (recipients.length + 1) * 500);
+      .then(() => {
+        console.log(`✅ Admin completion summary sent`);
+        showToast(`✅ All final reports sent!`, 'success', '🏖');
+      })
+      .catch(err => {
+        console.error('❌ Admin completion email error:', err);
+        showToast(`⚠️ Admin summary failed: ${err.text||err}`, 'info', '⚠️');
+      });
+  }, (recipients.length + 1) * 600);
 }
 
 
