@@ -678,6 +678,8 @@ async function saveToFirebase() {
 }
 
 // ── FIREBASE REALTIME LISTENER ──
+let completionEmailsSent = false; // guard against double-firing
+
 function startFirebaseListener() {
   onValue(ref(db, DRAFT_REF), (snapshot) => {
     const data = snapshot.val();
@@ -685,8 +687,16 @@ function startFirebaseListener() {
     const prevIndex = state.currentPickIndex;
     deserializeState(data);
     renderAll();
-    startReminderChecker(); // restart checker whenever state updates
-    if (data.currentPickIndex !== prevIndex && prevIndex !== 0) {
+    startReminderChecker();
+
+    // Check if draft just completed — fire completion emails once
+    if (isDraftDone() && !completionEmailsSent) {
+      completionEmailsSent = true;
+      console.log('🏖 Firebase listener detected draft complete — firing completion emails');
+      setTimeout(() => sendCompletionEmails(), 800);
+    }
+
+    if (data.currentPickIndex !== prevIndex && prevIndex !== 0 && !isDraftDone()) {
       const p = state.participants[participantAtIndex(state.currentPickIndex)];
       if (!isReadOnly()) {
         showToast(`It's your turn, ${p.name.split(' ')[0]}! Make your pick.`, 'success', '🏝');
@@ -955,6 +965,7 @@ async function launchDraft() {
     return {id:'slot'+i, label:s.label, start, end, days, max:s.max||4, claims:[]};
   });
   state.claims = [];
+  completionEmailsSent = false; // reset for fresh draft
   advanceToValidPicker();
   issueNewToken();
 
@@ -1137,9 +1148,8 @@ async function confirmPick() {
     renderAll();
 
     if (draftNowDone) {
-      showToast('Draft complete! Sending final report to all participants… 🎉','success','🏖');
-      console.log('🏖 Draft done — firing completion emails');
-      setTimeout(() => sendCompletionEmails(), 1500);
+      showToast('Draft complete! Sending final report… 🎉','success','🏖');
+      console.log('🏖 Draft done detected in confirmPick');
     } else {
       const np=state.participants[participantAtIndex(state.currentPickIndex)];
       showToast(`${p.name.split(' ')[0]} picked ${slot.label}! ${np.name.split(' ')[0]} is up.`,'success','✓');
