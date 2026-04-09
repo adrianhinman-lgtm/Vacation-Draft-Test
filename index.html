@@ -201,11 +201,184 @@ header { background: var(--ink); color: var(--warm-white); padding: 0 40px; disp
 .hidden { display: none !important; }
 
 @media(max-width:768px){
-  .app{grid-template-columns:1fr}.sidebar{max-height:none;position:static;border-right:none;border-bottom:1px solid var(--border)}
-  .main{padding:20px 16px}.calendar-grid{grid-template-columns:1fr 1fr}.p-grid{grid-template-columns:1fr}
-  .slot-col-headers,.slot-row{grid-template-columns:1fr 100px 100px 48px 44px 32px}
-  .review-grid{grid-template-columns:1fr}.settings-row{flex-direction:column}
-  header{padding:0 16px}.wizard-header{padding:16px 16px 0}
+
+  /* ── HEADER ── */
+  header { padding: 0 16px; height: 56px; }
+  .header-title { font-size: 1.1rem; gap: 6px; }
+  .header-round { font-size: 0.68rem; letter-spacing: 0.04em; }
+  header .btn { padding: 5px 10px; font-size: 0.7rem; }
+
+  /* ── LAYOUT: stack sidebar below main ── */
+  .app { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+
+  /* ── SIDEBAR: collapse into horizontal scrolling pill strip ── */
+  .sidebar {
+    max-height: none;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sidebar-section {
+    margin-bottom: 0;
+    flex-shrink: 0;
+    min-width: 160px;
+  }
+  .sidebar-section:first-child { min-width: 220px; }
+  .sidebar-label { margin-bottom: 8px; }
+
+  /* Draft order list horizontal */
+  .draft-list { flex-direction: column; gap: 4px; }
+  .draft-item { padding: 6px 10px; border-radius: 8px; }
+  .draft-name { font-size: 0.8rem; }
+  .pick-num { width: 16px; font-size: 0.65rem; }
+  .avatar { width: 26px; height: 26px; font-size: 0.68rem; }
+
+  /* Stats: 2x2 compact grid */
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat-card { padding: 8px 10px; border-radius: 8px; }
+  .stat-num { font-size: 1.1rem; }
+  .stat-label { font-size: 0.62rem; }
+
+  /* Picks table compact */
+  .picks-table { gap: 2px; }
+  .picks-row { padding: 2px 0; }
+  .picks-name { font-size: 0.72rem; }
+  .picks-count { font-size: 0.72rem; }
+  .picks-av { width: 18px; height: 18px; font-size: 0.52rem; }
+
+  /* ── MAIN ── */
+  .main { padding: 16px 14px; }
+
+  /* Turn banner: stack vertically, full width */
+  .turn-banner {
+    padding: 16px 18px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+  }
+  .turn-banner-left { gap: 12px; width: 100%; }
+  .turn-avatar-lg { width: 40px; height: 40px; font-size: 0.95rem; flex-shrink: 0; }
+  .turn-info-name { font-size: 1.1rem; }
+  .turn-info-sub { font-size: 0.75rem; }
+  .turn-banner-right { width: 100%; }
+  .turn-banner-right .btn { width: 100%; text-align: center; padding: 10px; font-size: 0.82rem; }
+
+  /* Section header */
+  .section-header { margin-bottom: 12px; }
+  .section-title { font-size: 1.1rem; }
+  .section-hint { font-size: 0.74rem; }
+
+  /* ── SLOT CARDS: single column on small phones, 2 col on larger ── */
+  .calendar-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .slot-card { padding: 14px; border-radius: 12px; }
+  .slot-date-range { font-size: 0.95rem; }
+  .slot-duration { font-size: 0.7rem; margin-bottom: 10px; }
+  .slot-spots { gap: 4px; margin-bottom: 8px; }
+  .spot { width: 22px; height: 22px; font-size: 0.58rem; }
+  .slot-status { font-size: 0.68rem; }
+  .status-dot { width: 5px; height: 5px; }
+
+  /* Skip/read-only notice */
+  .skip-notice { font-size: 0.78rem; padding: 8px 12px; margin-bottom: 12px; }
+
+  /* Claims table: hide round column, compress */
+  .claims-header { font-size: 1.1rem; margin-bottom: 12px; }
+  .claims-row { grid-template-columns: 1.8fr 1.6fr 0.8fr; padding: 10px 14px; font-size: 0.78rem; }
+  .claims-row > *:last-child { display: none; }
+  .claim-avatar { width: 22px; height: 22px; font-size: 0.58rem; }
+
+  /* Complete banner */
+  .complete-banner { padding: 18px 20px; border-radius: 12px; margin-bottom: 16px; }
+  .complete-banner h2 { font-size: 1.3rem; }
+  .complete-banner p { font-size: 0.82rem; }
+
+  /* Toast */
+  .toast { bottom: 16px; right: 12px; left: 12px; max-width: none; font-size: 0.8rem; padding: 12px 16px; }
+
+  /* Read-only notice */
+  #readOnlyNotice { font-size: 0.78rem; padding: 8px 12px; }
+
+  /* ── MODAL ── */
+  .modal { padding: 22px 18px; border-radius: 16px; }
+  .modal-title { font-size: 1.2rem; }
+  .modal-sub { font-size: 0.8rem; margin-bottom: 16px; }
+  .modal-slot-info { padding: 12px 14px; border-radius: 10px; margin-bottom: 14px; }
+  .modal-slot-name { font-size: 1rem; }
+  .f-label { font-size: 0.72rem; margin-bottom: 4px; }
+  .f-input { padding: 9px 12px; font-size: 0.85rem; margin-bottom: 12px; border-radius: 8px; }
+  .modal-actions { gap: 8px; }
+  .modal-actions .btn { padding: 10px 16px; font-size: 0.82rem; flex: 1; text-align: center; }
+
+  /* ── WIZARD ── */
+  .setup-overlay { overflow-y: auto; }
+  .wizard-header { padding: 16px 16px 0; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .wizard-steps { gap: 6px; }
+  .wizard-step span { display: none; } /* hide step labels, just show dots */
+  .step-dot { width: 28px; height: 28px; font-size: 0.7rem; }
+  .step-divider { width: 16px; }
+  .wizard-body { padding: 20px 16px 32px; }
+  .wizard-title { font-size: 1.5rem; margin-bottom: 4px; }
+  .wizard-sub { font-size: 0.82rem; margin-bottom: 20px; }
+
+  /* Participants grid: single column */
+  .p-grid { grid-template-columns: 1fr; gap: 8px; margin-bottom: 20px; }
+  .p-row { padding: 9px 12px; border-radius: 10px; }
+  .p-name-input { font-size: 0.85rem; }
+  .p-email-input { font-size: 0.72rem; }
+
+  /* Settings row */
+  .settings-row { flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .setting-box { padding: 10px 12px; border-radius: 10px; }
+
+  /* Slot editor: simplified stacked layout */
+  .slot-col-headers { display: none; } /* hide headers on mobile — inputs are self-explanatory */
+  .slot-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+  .slot-row .slot-input:first-child { grid-column: 1 / -1; font-size: 0.88rem; } /* label full width */
+  .slot-input[type="date"] { font-size: 0.75rem; }
+  .slot-days-badge { font-size: 0.68rem; padding: 2px 6px; }
+  .slot-input[type="number"] { font-size: 0.8rem; }
+  .slot-del-btn { width: 26px; height: 26px; font-size: 0.78rem; }
+  .add-slot-btn { padding: 9px 14px; font-size: 0.82rem; margin-bottom: 16px; border-radius: 8px; }
+
+  /* Review */
+  .review-grid { grid-template-columns: 1fr; gap: 10px; margin-bottom: 16px; }
+  .review-card { padding: 12px 14px; border-radius: 10px; }
+  .review-person { font-size: 0.78rem; padding: 3px 0; }
+  .review-slot { font-size: 0.75rem; }
+
+  /* Wizard nav */
+  .wizard-nav { gap: 8px; }
+  .btn-next { padding: 12px 20px; font-size: 0.85rem; }
+  .btn-back { padding: 12px 16px; font-size: 0.85rem; }
+  .btn-launch { padding: 13px 24px; font-size: 0.9rem; }
+
+  /* Info box */
+  .info-box { font-size: 0.78rem; padding: 10px 12px; border-radius: 10px; margin-bottom: 16px; }
+}
+
+/* Two-column slot cards on medium-small screens */
+@media(min-width:480px) and (max-width:768px){
+  .calendar-grid { grid-template-columns: 1fr 1fr; }
 }
 </style>
 </head>
@@ -413,10 +586,7 @@ const ADMIN_EMAIL = 'Adrian.d.hinman@kp.org';
 const ADMIN_NAME  = 'Adrian';
 
 // Slots that are mutually exclusive — picking one blocks the other for the same person
-// Uses partial label matching (case-insensitive)
-const EXCLUSIVE_PAIRS = [
-  ['Christmas Week', "New Year's Week"]
-];
+// (now defined inside the exclusivity section below)
 
 // ── LOCAL STATE (rebuilt from Firebase) ──
 let state = {
@@ -564,25 +734,54 @@ function advanceToValidPicker() {
 }
 
 // ── CHRISTMAS / NEW YEAR'S EXCLUSIVITY ──
-// Returns the label of the slot that blocks this one for pIdx, or null if no block
-function getExclusiveBlockLabel(slotLabel, pIdx) {
+// Define exclusive pairs by partial label keywords (trimmed, lowercase)
+const EXCLUSIVE_PAIRS = [
+  ['christmas', "new year's week"]
+];
+
+// Get all slot IDs that are in the same exclusive group as a given slot
+function getExclusivePartnerIds(slotId) {
+  const slot = state.slots.find(s => s.id === slotId);
+  if (!slot) return [];
+  const label = slot.label.toLowerCase();
   for (const pair of EXCLUSIVE_PAIRS) {
-    const inPair = pair.find(p => slotLabel.toLowerCase().includes(p.toLowerCase()));
-    if (!inPair) continue;
-    const otherLabel = pair.find(p => !slotLabel.toLowerCase().includes(p.toLowerCase()));
-    // Check if this person has already claimed the other slot
-    const alreadyClaimedOther = state.claims.some(c =>
-      c.personIdx === pIdx &&
-      state.slots.find(s => s.id === c.slotId)?.label.toLowerCase().includes(otherLabel.toLowerCase())
-    );
-    if (alreadyClaimedOther) return otherLabel;
+    const matchesThisSlot = pair.some(keyword => label.includes(keyword));
+    if (!matchesThisSlot) continue;
+    // Return IDs of all OTHER slots in this pair
+    return state.slots
+      .filter(s => s.id !== slotId && pair.some(keyword => s.label.toLowerCase().includes(keyword)))
+      .map(s => s.id);
+  }
+  return [];
+}
+
+// Has pIdx already claimed any slot that is exclusive with slotId?
+function isExclusivelyBlockedById(slotId, pIdx) {
+  const partnerIds = getExclusivePartnerIds(slotId);
+  if (!partnerIds.length) return false;
+  return partnerIds.some(partnerId =>
+    state.claims.some(c => c.personIdx === pIdx && c.slotId === partnerId)
+  );
+}
+
+// Returns the label of the blocking partner slot, or null
+function getExclusiveBlockLabel(slotLabel, pIdx) {
+  const slot = state.slots.find(s => s.label === slotLabel);
+  if (!slot) return null;
+  const partnerIds = getExclusivePartnerIds(slot.id);
+  for (const partnerId of partnerIds) {
+    const alreadyClaimed = state.claims.some(c => c.personIdx === pIdx && c.slotId === partnerId);
+    if (alreadyClaimed) {
+      const partnerSlot = state.slots.find(s => s.id === partnerId);
+      return partnerSlot ? partnerSlot.label : null;
+    }
   }
   return null;
 }
 
-// Is this slot blocked for pIdx due to exclusivity rule?
+// Is this slot (object) blocked for pIdx?
 function isExclusivelyBlocked(slot, pIdx) {
-  return getExclusiveBlockLabel(slot.label, pIdx) !== null;
+  return isExclusivelyBlockedById(slot.id, pIdx);
 }
 
 // ── 24-HOUR REMINDER SYSTEM ──
