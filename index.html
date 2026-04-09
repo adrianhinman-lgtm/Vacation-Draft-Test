@@ -209,29 +209,28 @@ header { background: var(--ink); color: var(--warm-white); padding: 0 40px; disp
   header .btn { padding: 5px 10px; font-size: 0.7rem; }
 
   /* ── LAYOUT: stack sidebar below main ── */
-  .app { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  .app {
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+  }
+  .main { order: 1; } /* main content first */
+  .sidebar { order: 2; } /* sidebar drops to bottom */
 
-  /* ── SIDEBAR: collapse into horizontal scrolling pill strip ── */
+  /* ── SIDEBAR: compact panel at the bottom ── */
   .sidebar {
     max-height: none;
     position: static;
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 14px 16px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    display: flex;
-    flex-direction: row;
+    border-top: 1px solid var(--border);
+    padding: 16px 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 16px;
-    align-items: flex-start;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
   }
-  .sidebar-section {
-    margin-bottom: 0;
-    flex-shrink: 0;
-    min-width: 160px;
-  }
-  .sidebar-section:first-child { min-width: 220px; }
+  .sidebar-section { margin-bottom: 0; }
+  .sidebar-section:first-child { grid-column: 1 / -1; } /* draft order full width */
   .sidebar-label { margin-bottom: 8px; }
 
   /* Draft order list horizontal */
