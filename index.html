@@ -1178,9 +1178,10 @@ async function manualSkip() {
 }
 
 // ── EMAIL (EmailJS) ──
-const EMAILJS_SERVICE  = 'service_mg9q6dy';
-const EMAILJS_TEMPLATE = 'template_3san8bo';
-const EMAILJS_KEY      = '5B7wHSc5-NxrU7Odr';
+const EMAILJS_SERVICE    = 'service_mg9q6dy';
+const EMAILJS_TEMPLATE   = 'template_3san8bo';   // turn notifications, reminders, launch
+const EMAILJS_COMPLETE   = 'template_px9tlfa';   // completion report (dedicated template)
+const EMAILJS_KEY        = '5B7wHSc5-NxrU7Odr';
 const DRAFT_LINK       = 'https://adrianhinman-lgtm.github.io/Vacation-Draft-Test/';
 
 function initEmailJS() {
@@ -1283,25 +1284,26 @@ function sendReminderEmail(person) {
 }
 // ── COMPLETION REPORT EMAIL ──
 function buildFinalSchedule() {
-  // Full schedule grouped by slot, sorted chronologically
+  // Each slot as a clearly labelled block with full names listed underneath
   return state.slots.map(slot => {
     const claimants = slot.claims.map(pIdx => state.participants[pIdx].name);
-    const names = claimants.length > 0 ? claimants.join(', ') : 'No one selected';
-    return `📅 ${slot.label}\n   ${fmt(slot.start)} – ${fmt(slot.end)} (${slot.days} days)\n   ${names}`;
-  }).join('\n\n');
+    const nameList = claimants.length > 0
+      ? claimants.map(n => `   - ${n}`).join('\n')
+      : '   - (no one selected this date)';
+    return `${slot.label}\n${fmt(slot.start)} – ${fmt(slot.end)} (${slot.days} days)\n${nameList}`;
+  }).join('\n\n──────────────────────────────\n\n');
 }
 
-function buildPersonalSummary(pIdx) {
-  // What did this specific person pick?
+function buildPersonalSummary(person, pIdx) {
   const picks = state.claims
     .filter(c => c.personIdx === pIdx)
     .map(c => {
       const slot = state.slots.find(s => s.id === c.slotId);
-      return slot ? `• ${slot.label} (${fmt(slot.start)} – ${fmt(slot.end)})` : '';
+      return slot ? `   • ${slot.label} (${fmt(slot.start)} – ${fmt(slot.end)}, ${slot.days} days)` : '';
     })
-    .filter(Boolean)
-    .join('\n');
-  return picks || 'No selections made.';
+    .filter(Boolean);
+  if (picks.length === 0) return `${person.name} made no selections.`;
+  return `${person.name}'s Selections (${picks.length} pick${picks.length!==1?'s':''}):\n${picks.join('\n')}`;
 }
 
 function sendCompletionEmails() {
@@ -1315,76 +1317,60 @@ function sendCompletionEmails() {
   const recipients = [...state.participants];
   console.log(`📧 Sending completion emails to ${recipients.length} participants + admin`);
 
-  // Send to each participant with a staggered delay to avoid rate limits
+  // Send to each participant using the dedicated completion template
   recipients.forEach((person, i) => {
     setTimeout(() => {
-      const personalSummary = buildPersonalSummary(i);
+      const personalSummary = buildPersonalSummary(person, i);
       const templateParams = {
-        to_name:            person.name,
-        to_first_name:      person.name.split(' ')[0],
-        to_email:           person.email,
-        from_name:          'Vacation Draft',
-        actor_name:         'Vacation Draft',
-        action_summary:     `The vacation draft is complete! Here is the full schedule and your personal selections.`,
-        slot_label:         'YOUR SELECTIONS:\n' + personalSummary,
-        slot_dates:         '—',
-        slot_days:          '—',
-        spots_left:         '—',
-        closed_slots:       finalSchedule,
-        open_slots_summary: `Total picks made: ${state.totalPicks}`,
-        round_num:          roundNumber(state.currentPickIndex),
-        pick_num:           state.totalPicks,
-        context:            'complete',
-        draft_link:         BASE_URL,
-        reply_to:           ADMIN_EMAIL,
+        to_name:        person.name,
+        to_first_name:  person.name.split(' ')[0],
+        to_email:       person.email,
+        reply_to:       ADMIN_EMAIL,
+        action_summary: `The vacation draft is now complete. All selections have been made.\n\nYour personal selections are listed below, followed by the full group schedule.\n\nClick the link to view the live draft board.`,
+        personal_picks: personalSummary,
+        full_schedule:  finalSchedule,
+        summary_line:   `Total participants: ${recipients.length}  |  Total picks: ${state.totalPicks}`,
+        draft_link:     BASE_URL,
       };
       console.log(`📧 Sending to ${person.name} (${person.email})...`);
-      emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, templateParams)
+      emailjs.send(EMAILJS_SERVICE, EMAILJS_COMPLETE, templateParams)
         .then(() => {
           console.log(`✅ Completion report sent to ${person.name}`);
-          if (i === 0) showToast(`📧 Sending final reports…`, 'success', '📧');
+          if (i === 0) showToast(`📧 Sending final reports to all participants…`, 'success', '📧');
         })
         .catch(err => {
           console.error(`❌ Completion email error (${person.name}):`, err);
-          showToast(`⚠️ Report email failed for ${person.name.split(' ')[0]}: ${err.text||err}`, 'info', '⚠️');
+          showToast(`⚠️ Report failed for ${person.name.split(' ')[0]}: ${err.text || err}`, 'info', '⚠️');
         });
-    }, i * 600); // 600ms between each to stay under rate limits
+    }, i * 700);
   });
 
-  // Admin summary last
+  // Admin summary — sent last with everyone's individual picks
   setTimeout(() => {
+    const adminSummary = recipients.map((p, i) => buildPersonalSummary(p, i)).join('\n\n──────────────────────────────\n\n');
     const adminParams = {
-      to_name:            ADMIN_NAME,
-      to_first_name:      ADMIN_NAME,
-      to_email:           ADMIN_EMAIL,
-      from_name:          'Vacation Draft',
-      actor_name:         'Vacation Draft',
-      action_summary:     `The vacation draft is complete! All ${state.totalPicks} picks have been made. The full schedule is below.`,
-      slot_label:         '—',
-      slot_dates:         '—',
-      slot_days:          '—',
-      spots_left:         '—',
-      closed_slots:       finalSchedule,
-      open_slots_summary: `Total participants: ${state.participants.length} · Total picks: ${state.totalPicks}`,
-      round_num:          roundNumber(state.currentPickIndex),
-      pick_num:           state.totalPicks,
-      context:            'complete-admin',
-      draft_link:         BASE_URL,
-      reply_to:           ADMIN_EMAIL,
+      to_name:        ADMIN_NAME,
+      to_first_name:  ADMIN_NAME,
+      to_email:       ADMIN_EMAIL,
+      reply_to:       ADMIN_EMAIL,
+      action_summary: `The vacation draft is complete. All ${state.totalPicks} picks have been made across ${state.slots.length} date slots.\n\nThe full group schedule and each participant's individual selections are below.`,
+      personal_picks: adminSummary,
+      full_schedule:  finalSchedule,
+      summary_line:   `Total participants: ${recipients.length}  |  Total picks: ${state.totalPicks}`,
+      draft_link:     BASE_URL,
     };
-    console.log(`📧 Sending admin summary to ${ADMIN_EMAIL}...`);
-    emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, adminParams)
+    console.log(`📧 Sending admin completion summary to ${ADMIN_EMAIL}...`);
+    emailjs.send(EMAILJS_SERVICE, EMAILJS_COMPLETE, adminParams)
       .then(() => {
         console.log(`✅ Admin completion summary sent`);
         showToast(`✅ All final reports sent!`, 'success', '🏖');
       })
       .catch(err => {
         console.error('❌ Admin completion email error:', err);
-        showToast(`⚠️ Admin summary failed: ${err.text||err}`, 'info', '⚠️');
+        showToast(`⚠️ Admin summary failed: ${err.text || err}`, 'info', '⚠️');
       });
-  }, (recipients.length + 1) * 600);
+  }, (recipients.length + 1) * 700);
 }
-
 
 function showToast(msg,type='success',icon='✓') {
   clearTimeout(toastTimer);
